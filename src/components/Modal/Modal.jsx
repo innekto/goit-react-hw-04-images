@@ -1,56 +1,71 @@
-import React, { Component } from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
-// import { MdArrowBackIos, MdArrowForwardIos } from 'react-icons/md';
-
 import {
-  HiArrowLeft,
-  HiArrowRight,
-  ModalCount,
-  ModalSwitch,
-  ModalWindow,
   Overlay,
+  ModalContainer,
+  CurrentPageText,
+  Button,
+  ArrowBack,
+  ArrowForward,
 } from './Modal.styled';
 
-export class Modal extends Component {
-  static propTypes = {
-    onKeyClick: PropTypes.func.isRequired,
-    onMouseClick: PropTypes.func.isRequired,
-    totalImages: PropTypes.number.isRequired,
-    currentPosition: PropTypes.number.isRequired,
-    changeIndex: PropTypes.func.isRequired,
-    image: PropTypes.shape({
-      largeImageURL: PropTypes.string.isRequired,
-      tags: PropTypes.string.isRequired,
-    }).isRequired,
+export const Modal = props => {
+  const {
+    totalImages,
+    currentPosition,
+    toggleModal,
+    changeCurrentIndex,
+    image: { largeImageURL, tags },
+  } = props;
+
+  useEffect(() => {
+    const onKeyClick = e => {
+      if (e.code === 'Escape') {
+        toggleModal();
+      }
+      if (e.code === 'ArrowRight') {
+        changeCurrentIndex(1);
+      }
+      if (e.code === 'ArrowLeft') {
+        changeCurrentIndex(-1);
+      }
+    };
+    document.addEventListener('keydown', onKeyClick);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyClick);
+    };
+  }, [changeCurrentIndex, toggleModal]);
+
+  const onMouseClick = e => {
+    if (e.target === e.currentTarget) {
+      toggleModal();
+    }
   };
 
-  componentWillUnmount() {
-    const { onKeyClick } = this.props;
-    document.removeEventListener('keydown', onKeyClick);
-  }
+  return (
+    <Overlay onClick={onMouseClick}>
+      <ModalContainer>
+        <CurrentPageText>{`${currentPosition}/${totalImages}`}</CurrentPageText>
+        <Button type="button" onClick={() => changeCurrentIndex(-1)}>
+          <ArrowBack />
+        </Button>
+        <img src={largeImageURL} alt={tags} width="1280" />
+        <Button type="button" onClick={() => changeCurrentIndex(1)}>
+          <ArrowForward />
+        </Button>
+      </ModalContainer>
+    </Overlay>
+  );
+};
 
-  render() {
-    const {
-      onMouseClick,
-      changeIndex,
-      totalImages,
-      currentPosition,
-      image: { largeImageURL, tags },
-    } = this.props;
-
-    return (
-      <Overlay onClick={onMouseClick}>
-        <ModalWindow>
-          <ModalCount>{`${currentPosition}/${totalImages}`}</ModalCount>
-          <ModalSwitch type="button" onClick={() => changeIndex(-1)}>
-            <HiArrowLeft />
-          </ModalSwitch>
-          <img src={largeImageURL} alt={tags} width="1280" />
-          <ModalSwitch type="button" onClick={() => changeIndex(1)}>
-            <HiArrowRight />
-          </ModalSwitch>
-        </ModalWindow>
-      </Overlay>
-    );
-  }
-}
+Modal.propTypes = {
+  totalImages: PropTypes.number.isRequired,
+  currentPosition: PropTypes.number.isRequired,
+  image: PropTypes.shape({
+    largeImageURL: PropTypes.string.isRequired,
+    tags: PropTypes.string.isRequired,
+  }).isRequired,
+  toggleModal: PropTypes.func.isRequired,
+  changeCurrentIndex: PropTypes.func.isRequired,
+};

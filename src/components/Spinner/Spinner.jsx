@@ -9,7 +9,7 @@ export const Loader = () => {
       ariaLabel="rotating-triangels-loading"
       wrapperStyle={{}}
       wrapperClass="rotating-triangels-wrapper"
-      colors={['#0099ff', '#00eaff', '#00fffb']}
+      colors={['#0099ff', '#00eaff', '#077b79']}
     />
   );
 };

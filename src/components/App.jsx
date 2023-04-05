@@ -1,152 +1,134 @@
-import React, { Component } from 'react';
-import { STATE, fetchImage } from '../services/index';
-import { SearchBar, Gallery, Loader, Button, Modal, Message } from './index';
+import { useRef, useEffect, useState } from 'react';
+import {
+  SearchBar,
+  Gallery,
+  Header,
+  Button,
+  Loader,
+  Modal,
+  Message,
+} from './index';
 
-export class App extends Component {
-  state = {
-    //оголошуємо масив який буде заповнюватись об'єктами зображень
-    images: [],
-    //параметр запиту для пошуку зображень
-    query: '',
-    //поточна сторінка результатів пошуку
-    page: 1,
-    // повідомлення про помилку
-    error: null,
-    // константа, в залежності від її значення будуть відображатись різні елементи
-    status: STATE.INITIAL_STATE,
-    // це логічне значення, яке визначає, чи потрібно показувати модальне вікно зображення
-    showModal: false,
-    // поточний індекс зображення, що відображається в модальному вікні
-    currentIndex: null,
+import { STATE, fetchImage, normalizedData } from 'services';
+
+import { Wrapper } from './Wrapper.styled';
+
+export const App = () => {
+  //оголошуємо масив який буде заповнюватись об'єктами зображень
+  const [images, setImages] = useState([]);
+  //параметр запиту для пошуку зображень
+  const [query, setQuery] = useState('');
+  //поточна сторінка результатів пошуку
+  const [page, setPage] = useState(1);
+  // повідомлення про помилку
+  const [error, setError] = useState(null);
+  // константа, в залежності від її значення будуть відображатись різні елементи
+  const [status, setStatus] = useState(STATE.INITIAL_STATE);
+  // це логічне значення, яке визначає, чи потрібно показувати модальне вікно зображення
+  const [showModal, setShowModal] = useState(false);
+  // поточний індекс зображення, що відображається в модальному вікні
+  const [currentIndex, setCurrentIndex] = useState(null);
+
+  const currentImage = images[currentIndex];
+
+  //змінюємо значення showModal на протилежне до попереднього.
+  const toggleModal = () => {
+    setShowModal(prev => !prev);
   };
 
-  totalHits = null;
+  //встановлення нового значення запиту
+  const getQuery = value => {
+    // встановлюємо стан query на значення value
+    setQuery(value);
+    // очищуємо стан images, встановлюючи його в пустий масив
+    setImages([]);
+    // встановлюємо стан page на 1
+    setPage(1);
+  };
 
-  async componentDidUpdate(_, prevState) {
-    if (prevState.query !== this.state.query) {
+  const loadMore = () => {
+    setPage(prev => prev + 1);
+  };
+
+  const changeCurrentIndex = value => {
+    // новий індекс
+    const newIndex = currentIndex + value;
+    // останній індекс в масиві зображень.
+    const lastImageIndex = images.length - 1;
+    // Якщо новий індекс менший за 0, то зображення з цим індексом не існує,
+    //  тому поточний індекс встановлюється на останнє зображення в масиві.
+    if (newIndex < 0) {
+      setCurrentIndex(lastImageIndex);
+      //Якщо новий індекс більший за останній індекс, встановлюємо поточний індекс на перше зображення в масиві
+    } else if (newIndex > lastImageIndex) {
+      setCurrentIndex(0);
+      // якщо новий індекс знаходиться в межах діапазону між 0 і останнім індексом
+      //встановлюємо поточний індекс на нове значення
+    } else {
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  // відстежувємо, яке зображення було вибране користувачем
+  const setIndex = id => {
+    // знаходимо індекс зображення за його id
+    const index = images.findIndex(image => image.id === id);
+    // встановлюємо поточний індекс на знайдений індекс зображення
+    setCurrentIndex(index);
+  };
+
+  const totalImageHits = useRef(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadImages = async () => {
+      setStatus(STATE.LOAD);
+      setError(null);
       try {
-        await this.setState({ page: 1, status: STATE.LOAD });
-        const { page, query } = this.state;
-        const data = await fetchImage(query, page);
-        this.totalHits = data.totalHits;
-
-        this.setState({
-          images: this.normalizedData(data.hits),
-          status: STATE.LOADED,
-        });
+        const { totalHits, hits } = await fetchImage(query, page, controller);
+        totalImageHits.current = totalHits;
+        setImages(prev => [...prev, ...normalizedData(hits)]);
+        setStatus(STATE.LOADED);
       } catch (error) {
-        this.setState({ error: error.message, status: STATE.ERROR });
+        setError(error);
+        setStatus(STATE.ERROR);
       }
-    }
+    };
+    if (query !== '') loadImages();
 
-    if (prevState.page < this.state.page) {
-      try {
-        const { page, query } = this.state;
-        this.setState({ status: STATE.LOAD });
-        const data = await fetchImage(query, page);
-        this.setState(prevState => ({
-          images: [...prevState.images, ...this.normalizedData(data.hits)],
-          status: STATE.LOADED,
-        }));
-      } catch (error) {
-        this.setState({ error: error.message, status: STATE.ERROR });
-      }
-    }
-  }
+    return () => {
+      controller.abort();
+    };
+  }, [page, query, setError, setImages, setStatus]);
 
-  normalizedData = data => {
-    return data.map(({ id, tags, webformatURL, largeImageURL }) => {
-      return { id, tags, webformatURL, largeImageURL };
-    });
-  };
-
-  onHandleSubmit = value => {
-    this.setState({ query: value });
-  };
-
-  onHandleClick = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
-
-  openModal = id => {
-    this.setState({
-      showModal: true,
-    });
-    document.addEventListener('keydown', this.onKeyClick);
-    const index = this.state.images.findIndex(image => image.id === id);
-    this.setState({ currentIndex: index });
-  };
-
-  onKeyClick = async e => {
-    if (e.code === 'Escape') {
-      this.setState({ showModal: false });
-    }
-    if (e.code === 'ArrowRight') {
-      this.changeIndex(1);
-    }
-    if (e.code === 'ArrowLeft') {
-      this.changeIndex(-1);
-    }
-  };
-
-  onMouseClick = e => {
-    if (e.target === e.currentTarget) {
-      this.setState({ showModal: false });
-    }
-  };
-
-  changeIndex = value => {
-    if (this.state.currentIndex + value < 0) {
-      this.setState({ currentIndex: this.state.images.length - 1 });
-      return;
-    }
-    if (this.state.currentIndex + value > this.state.images.length - 1) {
-      this.setState({
-        currentIndex: 0,
-      });
-      return;
-    }
-    this.setState(prevState => ({
-      currentIndex: prevState.currentIndex + value,
-    }));
-  };
-
-  render() {
-    const { images, error, status, showModal } = this.state;
-    const currentImage = this.state.images[this.state.currentIndex];
-
-    return (
-      <div className="App">
-        <SearchBar onSubmit={this.onHandleSubmit} status={status} />
-        {error && <Message>{`${error}. Try to reload your page!`}</Message>}
-        {!images.length && status === STATE.LOADED && (
-          <Message>
-            Nothing found. Try searching with a different parameter!
-          </Message>
-        )}
-        {!!images.length && (
-          <Gallery images={this.state.images} openModal={this.openModal} />
-        )}
-
-        {(status === STATE.INITIAL_STATE || status === STATE.LOADED) &&
-          !!images.length && (
-            <Button
-              onHandleClick={this.onHandleClick}
-              disabled={images.length >= this.totalHits}
-            />
-          )}
-        {status === STATE.LOAD && <Loader />}
-        {showModal && (
-          <Modal
-            image={currentImage}
-            onKeyClick={this.onKeyClick}
-            onMouseClick={this.onMouseClick}
-            changeIndex={this.changeIndex}
-            totalImages={this.state.images.length}
-            currentPosition={this.state.currentIndex + 1}
-          />
-        )}
-      </div>
-    );
-  }
-}
+  return (
+    <Wrapper>
+      <Header>
+        <SearchBar getQuery={getQuery} status={status} />
+      </Header>
+      <Gallery images={images} setIndex={setIndex} toggleModal={toggleModal} />
+      {!!images.length && status === STATE.LOADED && (
+        <Button
+          loadMore={loadMore}
+          disabled={images.length >= totalImageHits.current}
+        />
+      )}
+      {status === STATE.LOAD && <Loader />}
+      {showModal && (
+        <Modal
+          image={currentImage}
+          toggleModal={toggleModal}
+          changeCurrentIndex={changeCurrentIndex}
+          totalImages={images.length}
+          currentPosition={currentIndex + 1}
+        />
+      )}
+      {error && <Message>{`${error}. Try to reload your page!`}</Message>}
+      {!images.length && status === STATE.LOADED && (
+        <Message>
+          Nothing found. Try searching with a different parameter!
+        </Message>
+      )}
+    </Wrapper>
+  );
+};

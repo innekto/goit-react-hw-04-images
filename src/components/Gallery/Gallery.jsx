@@ -1,25 +1,33 @@
-import PropTypes from 'prop-types';
-import { GalleryItemImage } from 'components/GalleryImage/GalleryImage';
+import PropTypes, { shape } from 'prop-types';
+import { GalleryItem } from 'components/GalleryItem/GalleryItem';
+import { GalleryList, GalleryItems } from './Gallery.styled';
 
-import { ImageGallery, ImageGalleryItem } from './Gallery.styled';
-
-export const Gallery = ({ images, openModal }) => {
+export const Gallery = ({ images, setIndex, toggleModal }) => {
   return (
-    <ImageGallery>
-      {images.map(image => {
+    <GalleryList>
+      {images.map(({ id, ...otherProps }) => {
         return (
-          <ImageGalleryItem key={image.id} onClick={() => openModal(image.id)}>
-            <GalleryItemImage src={image.webformatURL} alt={image.tags} />
-          </ImageGalleryItem>
+          <GalleryItems
+            key={id}
+            onClick={() => {
+              setIndex(id);
+              toggleModal();
+            }}
+          >
+            <GalleryItem {...otherProps} />
+          </GalleryItems>
         );
       })}
-    </ImageGallery>
+    </GalleryList>
   );
 };
 
 Gallery.propTypes = {
-  openModal: PropTypes.func.isRequired,
   images: PropTypes.arrayOf(
-    PropTypes.shape({ id: PropTypes.number.isRequired }).isRequired
+    shape({
+      id: PropTypes.number.isRequired,
+    }).isRequired
   ).isRequired,
+  setIndex: PropTypes.func.isRequired,
+  toggleModal: PropTypes.func.isRequired,
 };

@@ -1,10 +1,12 @@
 import axios from 'axios';
 
 const API_KEY = '33610630-2a97c8dcb0ceace6d1188471d';
-const BASE_URL = 'https://pixabay.com/api/?';
+const BASE_URL = 'https://pixabay.com/api/';
+axios.defaults.baseURL = BASE_URL;
 
-export const fetchImage = async (querySearch, page) => {
-  const response = await axios(BASE_URL, {
+export const fetchImage = async (querySearch, page, controller) => {
+  const response = await axios({
+    signal: controller.signal,
     params: {
       key: API_KEY,
       q: querySearch,

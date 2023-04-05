@@ -1,6 +1,6 @@
-import styled from '@emotion/styled';
+import styled from 'styled-components';
 
-export const GalleryImage = styled.img`
+export const GalleryItemImage = styled.img`
   width: 100%;
   height: 260px;
   object-fit: cover;

@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
-import { NotFoundMessage } from './NotFoundMessage.styled';
+import { MessageContainer } from './Message.styled';
 
 export const Message = ({ children }) => (
-  <NotFoundMessage>{children}</NotFoundMessage>
+  <MessageContainer>{children}</MessageContainer>
 );
 
 Message.propTypes = { children: PropTypes.node.isRequired };
